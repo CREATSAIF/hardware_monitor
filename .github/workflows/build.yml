@@ -95,10 +95,8 @@ jobs:
         rustup target add ${{ matrix.target }}
         if [ "${{ matrix.target }}" = "aarch64-apple-darwin" ]; then
           sudo xcode-select --install || true
-          # 安装必要的工具链
-          brew install llvm
-          echo "LLVM_CONFIG=$(brew --prefix llvm)/bin/llvm-config" >> $GITHUB_ENV
-          echo "$(brew --prefix llvm)/bin" >> $GITHUB_PATH
+          sudo xcode-select --reset
+          sudo xcodebuild -license accept || true
         fi
 
     - name: Install cross-compilation tools
@@ -125,12 +123,10 @@ jobs:
       if: matrix.use_cross != true
       shell: bash
       run: |
-        if [ "${{ runner.os }}" = "macOS" ] && [ "${{ matrix.target }}" = "aarch64-apple-darwin" ]; then
+        if [ "${{ runner.os }}" = "macOS" ]; then
           export SDKROOT=$(xcrun -sdk macosx --show-sdk-path)
           export MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx --show-sdk-platform-version)
-          export LIBRARY_PATH="$(brew --prefix)/lib"
-          export CPATH="$(brew --prefix)/include"
-          export PATH="$(brew --prefix llvm)/bin:$PATH"
+          export DEVELOPER_DIR=$(xcode-select -p)
           cargo build --verbose --release --target ${{ matrix.target }}
         else
           cargo build --verbose --release --target ${{ matrix.target }}

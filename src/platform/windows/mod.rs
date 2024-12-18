@@ -1,5 +1,5 @@
 use crate::{GpuInfo, DiskIoStats, NetworkStats, ProcessStats, PowerInfo, PerformanceMetrics};
-use sysinfo::{System, ProcessExt};
+use sysinfo::{System, ProcessExt, SystemExt, CpuExt, NetworkExt, NetworksExt};
 use windows::Win32::System::Power::GetSystemPowerStatus;
 use windows::Win32::Foundation::BOOL;
 

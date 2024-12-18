@@ -1,9 +1,10 @@
 use crate::{GpuInfo, DiskIoStats, NetworkStats, ProcessStats, PowerInfo, PerformanceMetrics, InterfaceStats};
 use sysinfo::{System, SystemExt, ProcessExt, CpuExt, NetworksExt};
-use nvml_wrapper::{Nvml, enum_wrappers::device::TemperatureSensor};
 use procfs::net::TcpState;
 
+#[cfg(feature = "nvml")]
 pub fn get_gpu_info() -> Option<GpuInfo> {
+    use nvml_wrapper::{Nvml, enum_wrappers::device::TemperatureSensor};
     if let Ok(nvml) = Nvml::init() {
         if let Ok(device) = nvml.device_by_index(0) {
             if let (Ok(utilization), Ok(memory), Ok(temp), Ok(power)) = (
@@ -24,6 +25,11 @@ pub fn get_gpu_info() -> Option<GpuInfo> {
             }
         }
     }
+    None
+}
+
+#[cfg(not(feature = "nvml"))]
+pub fn get_gpu_info() -> Option<GpuInfo> {
     None
 }
 

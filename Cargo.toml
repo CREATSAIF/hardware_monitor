@@ -20,7 +20,7 @@ libc = "0.2"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 procfs = "0.15"
-nvml-wrapper = "0.9"
+nvml-wrapper = { version = "0.9", optional = true }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows = { version = "0.48", features = ["Win32_System_Performance", "Win32_Foundation", "Win32_System_Power"] }
@@ -28,6 +28,10 @@ windows = { version = "0.48", features = ["Win32_System_Performance", "Win32_Fou
 [target.'cfg(target_os = "macos")'.dependencies]
 core-foundation = "0.9"
 mach = "0.3"
+
+[features]
+default = []
+nvml = ["nvml-wrapper"]
 
 [profile.release]
 opt-level = 3

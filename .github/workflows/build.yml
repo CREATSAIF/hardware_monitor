@@ -75,7 +75,7 @@ jobs:
         sudo apt-get install -y gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf
 
     - name: Install Linux dependencies
-      if: runner.os == 'Linux' && !matrix.use_cross
+      if: runner.os == 'Linux' && matrix.use_cross != true
       run: |
         sudo apt-get update
         sudo apt-get install -y pkg-config libudev-dev
@@ -89,11 +89,11 @@ jobs:
       run: cross build --verbose --release --target ${{ matrix.target }}
 
     - name: Build native
-      if: !matrix.use_cross
+      if: matrix.use_cross != true
       run: cargo build --verbose --release --target ${{ matrix.target }}
 
     - name: Run tests
-      if: !matrix.use_cross
+      if: matrix.use_cross != true
       run: cargo test --verbose --target ${{ matrix.target }}
 
     - name: Package

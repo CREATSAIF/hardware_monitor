@@ -1,6 +1,6 @@
 .PHONY: all build clean docker docker-build docker-run test
 
-VERSION := 0.1.0
+VERSION := 0.1.1
 
 all: build
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 设置版本号
-VERSION="0.1.0"
+VERSION="0.1.1"
 
 # 创建发布目录
 mkdir -p release
@@ -13,46 +13,91 @@ HOST_ARCH=$(uname -m)
 echo "Building version ${VERSION}"
 echo "Host system: ${HOST_OS} ${HOST_ARCH}"
 
-# 设置交叉编译环境变量
-export CARGO_BUILD_TARGET_DIR="target"
-export CARGO_NET_GIT_FETCH_WITH_CLI=true
+# 安装 cross 工具（如果需要）
+if ! command -v cross &> /dev/null; then
+    echo "Installing cross..."
+    cargo install cross
+fi
+
+# 设置目标平台
+LINUX_TARGETS=(
+    "x86_64-unknown-linux-gnu"
+    "aarch64-unknown-linux-gnu"
+    "armv7-unknown-linux-gnueabihf"
+)
+
+WINDOWS_TARGETS=(
+    "x86_64-pc-windows-msvc"
+    "i686-pc-windows-msvc"
+)
+
+MACOS_TARGETS=(
+    "x86_64-apple-darwin"
+    "aarch64-apple-darwin"
+)
 
 # Linux 构建
-echo "Building for Linux..."
-if [ "${HOST_OS}" = "Linux" ]; then
-    # 本地构建
-    echo "Building native Linux binary..."
-    cargo build --release
-    cp target/release/hardware_monitor release/hardware_monitor-${VERSION}-linux-${HOST_ARCH}
-else
-    # 交叉编译
-    echo "Cross-compiling for Linux..."
-    cargo build --release --target x86_64-unknown-linux-gnu
-    cargo build --release --target aarch64-unknown-linux-gnu
-    cp target/x86_64-unknown-linux-gnu/release/hardware_monitor release/hardware_monitor-${VERSION}-linux-x86_64
-    cp target/aarch64-unknown-linux-gnu/release/hardware_monitor release/hardware_monitor-${VERSION}-linux-aarch64
-fi
-
-# Windows 构建 (如果在 Linux 上，需要安装 MinGW)
-if [ "${HOST_OS}" = "Linux" ]; then
-    echo "Cross-compiling for Windows..."
-    if command -v x86_64-w64-mingw32-gcc >/dev/null; then
-        cargo build --release --target x86_64-pc-windows-gnu
-        cp target/x86_64-pc-windows-gnu/release/hardware_monitor.exe release/hardware_monitor-${VERSION}-windows-x86_64.exe
+echo "Building for Linux targets..."
+for target in "${LINUX_TARGETS[@]}"; do
+    echo "Building for ${target}..."
+    if [ "${target}" = "x86_64-unknown-linux-gnu" ] && [ "${HOST_OS}" = "Linux" ] && [ "${HOST_ARCH}" = "x86_64" ]; then
+        # 本地构建
+        cargo build --release --target "${target}"
     else
-        echo "Skipping Windows build: MinGW not installed"
+        # 交叉编译
+        cross build --release --target "${target}"
     fi
-elif [ "${HOST_OS}" = "Windows_NT" ]; then
-    echo "Building for Windows..."
-    cargo build --release
-    cp target/release/hardware_monitor.exe release/hardware_monitor-${VERSION}-windows-${HOST_ARCH}.exe
+    
+    if [ $? -eq 0 ]; then
+        cp "target/${target}/release/hardware_monitor" "release/hardware_monitor-${VERSION}-${target}"
+        echo "Build successful for ${target}"
+    else
+        echo "Build failed for ${target}"
+    fi
+done
+
+# Windows 构建
+if [ "${HOST_OS}" = "Windows_NT" ]; then
+    echo "Building for Windows targets..."
+    for target in "${WINDOWS_TARGETS[@]}"; do
+        echo "Building for ${target}..."
+        cargo build --release --target "${target}"
+        if [ $? -eq 0 ]; then
+            cp "target/${target}/release/hardware_monitor.exe" "release/hardware_monitor-${VERSION}-${target}.exe"
+            echo "Build successful for ${target}"
+        else
+            echo "Build failed for ${target}"
+        fi
+    done
+elif command -v x86_64-w64-mingw32-gcc >/dev/null; then
+    echo "Cross-compiling for Windows targets..."
+    for target in "${WINDOWS_TARGETS[@]}"; do
+        echo "Building for ${target}..."
+        cross build --release --target "${target}"
+        if [ $? -eq 0 ]; then
+            cp "target/${target}/release/hardware_monitor.exe" "release/hardware_monitor-${VERSION}-${target}.exe"
+            echo "Build successful for ${target}"
+        else
+            echo "Build failed for ${target}"
+        fi
+    done
+else
+    echo "Skipping Windows builds: MinGW not installed and not on Windows"
 fi
 
-# macOS 构建 (仅在 macOS 上进行)
+# macOS 构建
 if [ "${HOST_OS}" = "Darwin" ]; then
-    echo "Building for macOS..."
-    cargo build --release
-    cp target/release/hardware_monitor release/hardware_monitor-${VERSION}-macos-${HOST_ARCH}
+    echo "Building for macOS targets..."
+    for target in "${MACOS_TARGETS[@]}"; do
+        echo "Building for ${target}..."
+        cargo build --release --target "${target}"
+        if [ $? -eq 0 ]; then
+            cp "target/${target}/release/hardware_monitor" "release/hardware_monitor-${VERSION}-${target}"
+            echo "Build successful for ${target}"
+        else
+            echo "Build failed for ${target}"
+        fi
+    done
 fi
 
 # 创建压缩包

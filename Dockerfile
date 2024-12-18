@@ -32,4 +32,4 @@ COPY --from=builder /usr/src/hardware_monitor/README.md ./
 COPY --from=builder /usr/src/hardware_monitor/LICENSE ./
 
 # 设置入口点
-ENTRYPOINT ["./release/hardware_monitor-0.1.0-linux-x86_64"] 
+ENTRYPOINT ["./release/hardware_monitor-0.1.1-linux-x86_64"] 

@@ -17,19 +17,46 @@ env:
 
 jobs:
   build:
-    name: Build on ${{ matrix.os }}
+    name: Build on ${{ matrix.os }} for ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
+          # Linux builds
           - os: ubuntu-latest
-            artifact_suffix: linux
+            target: x86_64-unknown-linux-gnu
+            artifact_suffix: linux-x86_64
             binary_name: hardware_monitor
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            artifact_suffix: linux-aarch64
+            binary_name: hardware_monitor
+            use_cross: true
+          - os: ubuntu-latest
+            target: armv7-unknown-linux-gnueabihf
+            artifact_suffix: linux-armv7
+            binary_name: hardware_monitor
+            use_cross: true
+
+          # Windows builds
           - os: windows-latest
-            artifact_suffix: windows
+            target: x86_64-pc-windows-msvc
+            artifact_suffix: windows-x86_64
             binary_name: hardware_monitor.exe
+          - os: windows-latest
+            target: i686-pc-windows-msvc
+            artifact_suffix: windows-i686
+            binary_name: hardware_monitor.exe
+
+          # macOS builds
           - os: macos-latest
-            artifact_suffix: macos
+            target: x86_64-apple-darwin
+            artifact_suffix: macos-x86_64
+            binary_name: hardware_monitor
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_suffix: macos-aarch64
             binary_name: hardware_monitor
 
     steps:
@@ -38,33 +65,50 @@ jobs:
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
       with:
+        targets: ${{ matrix.target }}
         components: rustfmt, clippy
 
+    - name: Install cross-compilation tools
+      if: runner.os == 'Linux' && matrix.use_cross
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf
+
     - name: Install Linux dependencies
-      if: matrix.os == 'ubuntu-latest'
+      if: runner.os == 'Linux' && !matrix.use_cross
       run: |
         sudo apt-get update
         sudo apt-get install -y pkg-config libudev-dev
 
-    - name: Build
-      run: cargo build --verbose --release
+    - name: Install cross
+      if: matrix.use_cross
+      run: cargo install cross
+
+    - name: Build with cross
+      if: matrix.use_cross
+      run: cross build --verbose --release --target ${{ matrix.target }}
+
+    - name: Build native
+      if: !matrix.use_cross
+      run: cargo build --verbose --release --target ${{ matrix.target }}
 
     - name: Run tests
-      run: cargo test --verbose
+      if: !matrix.use_cross
+      run: cargo test --verbose --target ${{ matrix.target }}
 
     - name: Package
       shell: bash
       run: |
         mkdir -p release
-        cd target/release
-        if [ "${{ matrix.os }}" = "windows-latest" ]; then
-          7z a ../../release/hardware_monitor-${{ matrix.artifact_suffix }}.zip ${{ matrix.binary_name }}
-          sha256sum ${{ matrix.binary_name }} > ../../release/hardware_monitor-${{ matrix.artifact_suffix }}.sha256
+        cd target/${{ matrix.target }}/release
+        if [[ "${{ matrix.binary_name }}" == *.exe ]]; then
+          7z a ../../../release/hardware_monitor-${{ matrix.artifact_suffix }}.zip ${{ matrix.binary_name }}
+          sha256sum ${{ matrix.binary_name }} > ../../../release/hardware_monitor-${{ matrix.artifact_suffix }}.sha256
         else
-          tar czf ../../release/hardware_monitor-${{ matrix.artifact_suffix }}.tar.gz ${{ matrix.binary_name }}
-          sha256sum ${{ matrix.binary_name }} > ../../release/hardware_monitor-${{ matrix.artifact_suffix }}.sha256
+          tar czf ../../../release/hardware_monitor-${{ matrix.artifact_suffix }}.tar.gz ${{ matrix.binary_name }}
+          sha256sum ${{ matrix.binary_name }} > ../../../release/hardware_monitor-${{ matrix.artifact_suffix }}.sha256
         fi
-        cd ../..
+        cd ../../..
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
@@ -96,9 +140,18 @@ jobs:
             Hardware Monitor Release ${{ github.ref }}
             
             ## 下载
-            - [Windows x64](hardware_monitor-windows.zip)
-            - [Linux x64](hardware_monitor-linux.tar.gz)
-            - [macOS x64](hardware_monitor-macos.tar.gz)
+            ### Linux
+            - [Linux x86_64](hardware_monitor-linux-x86_64.tar.gz)
+            - [Linux ARM64](hardware_monitor-linux-aarch64.tar.gz)
+            - [Linux ARMv7](hardware_monitor-linux-armv7.tar.gz)
+            
+            ### Windows
+            - [Windows x64](hardware_monitor-windows-x86_64.zip)
+            - [Windows x86](hardware_monitor-windows-i686.zip)
+            
+            ### macOS
+            - [macOS x64](hardware_monitor-macos-x86_64.tar.gz)
+            - [macOS ARM64](hardware_monitor-macos-aarch64.tar.gz)
             
             SHA256 校验和文件包含在每个发布包中。
           draft: false

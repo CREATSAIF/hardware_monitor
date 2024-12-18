@@ -23,4 +23,4 @@ git push origin main
 git push origin "v$VERSION"
 
 echo "版本 $VERSION 发布流程已启动"
-echo "请在 GitHub 上查看 Actions 进度：https://github.com/你的用户名/hardware_monitor/actions" 
+echo "请在 GitHub 上查看 Actions 进度：https://github.com/CREATSAIF/hardware_monitor/actions" 

@@ -83,9 +83,10 @@ jobs:
     # Windows特定设置
     - name: Setup Windows environment
       if: runner.os == 'Windows'
+      shell: bash
       run: |
-        rustup default stable-%{{ matrix.target }}
-        rustup target add %{{ matrix.target }}
+        rustup default stable
+        rustup target add ${{ matrix.target }}
 
     # macOS特定设置
     - name: Setup macOS environment

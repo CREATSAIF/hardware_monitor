@@ -1,0 +1,12 @@
+/target
+**/*.rs.bk
+Cargo.lock
+.env
+.vscode/
+.idea/
+*.pdb
+release/
+*.tar.gz
+*.zip
+*.exe
+.DS_Store

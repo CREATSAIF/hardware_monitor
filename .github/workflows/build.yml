@@ -101,16 +101,10 @@ jobs:
           echo "MACOSX_DEPLOYMENT_TARGET=11.0" >> $GITHUB_ENV
           # 配置cargo
           mkdir -p ~/.cargo
-          cat > ~/.cargo/config.toml << 'EOF'
-[target.aarch64-apple-darwin]
-linker = "clang"
-ar = "ar"
-rustflags = [
-  "-C", "link-arg=-arch",
-  "-C", "link-arg=arm64",
-  "-C", "target-cpu=apple-a14"
-]
-EOF
+          echo '[target.aarch64-apple-darwin]' > ~/.cargo/config.toml
+          echo 'linker = "clang"' >> ~/.cargo/config.toml
+          echo 'ar = "ar"' >> ~/.cargo/config.toml
+          echo 'rustflags = ["-C", "link-arg=-arch", "-C", "link-arg=arm64", "-C", "target-cpu=apple-a14"]' >> ~/.cargo/config.toml
         fi
 
     - name: Install cross-compilation tools

@@ -101,7 +101,7 @@ jobs:
           echo "MACOSX_DEPLOYMENT_TARGET=11.0" >> $GITHUB_ENV
           # 配置cargo
           mkdir -p ~/.cargo
-          cat > ~/.cargo/config.toml << EOF
+          cat > ~/.cargo/config.toml << 'EOF'
 [target.aarch64-apple-darwin]
 linker = "clang"
 ar = "ar"

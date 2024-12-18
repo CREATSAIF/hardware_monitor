@@ -93,14 +93,9 @@ jobs:
     - name: Setup macOS environment
       if: runner.os == 'macOS'
       run: |
-        # 安装最新的Rust工具链
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-        source $HOME/.cargo/env
         rustup default nightly
         rustup target add ${{ matrix.target }}
         if [ "${{ matrix.target }}" = "aarch64-apple-darwin" ]; then
-          # 安装必要的工具
-          brew install cmake
           # 设置环境变量
           echo "SDKROOT=$(xcrun -sdk macosx --show-sdk-path)" >> $GITHUB_ENV
           echo "MACOSX_DEPLOYMENT_TARGET=11.0" >> $GITHUB_ENV
@@ -108,11 +103,12 @@ jobs:
           mkdir -p ~/.cargo
           cat > ~/.cargo/config.toml << EOF
 [target.aarch64-apple-darwin]
+linker = "clang"
+ar = "ar"
 rustflags = [
-  "-C", "link-arg=-undefined",
-  "-C", "link-arg=dynamic_lookup",
   "-C", "link-arg=-arch",
-  "-C", "link-arg=arm64"
+  "-C", "link-arg=arm64",
+  "-C", "target-cpu=apple-a14"
 ]
 EOF
         fi
@@ -146,12 +142,10 @@ EOF
             # 设置交叉编译环境
             export SDKROOT=$(xcrun -sdk macosx --show-sdk-path)
             export MACOSX_DEPLOYMENT_TARGET=11.0
-            export DEVELOPER_DIR=$(xcode-select -p)
-            export CARGO_BUILD_TARGET=aarch64-apple-darwin
-            export CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER=$(xcrun -f clang)
-            # 使用nightly特性进行构建
-            RUSTFLAGS="-C target-cpu=apple-a14" \
-            cargo +nightly build --verbose --release -Z build-std=std,panic_abort
+            export CC=$(xcrun -f clang)
+            export CXX=$(xcrun -f clang++)
+            export AR=$(xcrun -f ar)
+            cargo build --verbose --release --target ${{ matrix.target }}
           else
             cargo build --verbose --release --target ${{ matrix.target }}
           fi

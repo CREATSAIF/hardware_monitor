@@ -21,24 +21,24 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+            binary_name: hardware_monitor
           - os: windows-latest
             target: x86_64-pc-windows-msvc
+            binary_name: hardware_monitor.exe
           - os: macos-latest
             target: x86_64-apple-darwin
+            binary_name: hardware_monitor
 
     steps:
     - uses: actions/checkout@v4
 
     - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
+      uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: stable
-        target: ${{ matrix.target }}
-        override: true
+        targets: ${{ matrix.target }}
         components: rustfmt, clippy
 
     - name: Install Linux dependencies
@@ -48,24 +48,24 @@ jobs:
         sudo apt-get install -y pkg-config libudev-dev
 
     - name: Build
-      run: cargo build --verbose --release --target ${{ matrix.target }}
+      run: cargo build --verbose --release
 
     - name: Run tests
-      run: cargo test --verbose --target ${{ matrix.target }}
+      run: cargo test --verbose
 
     - name: Package
       shell: bash
       run: |
         mkdir -p release
-        cd target/${{ matrix.target }}/release
+        cd target/release
         if [ "${{ matrix.os }}" = "windows-latest" ]; then
-          7z a ../../../release/hardware_monitor-${{ matrix.target }}.zip hardware_monitor.exe
-          sha256sum hardware_monitor.exe > ../../../release/hardware_monitor-${{ matrix.target }}.sha256
+          7z a ../../release/hardware_monitor-${{ matrix.target }}.zip ${{ matrix.binary_name }}
+          sha256sum ${{ matrix.binary_name }} > ../../release/hardware_monitor-${{ matrix.target }}.sha256
         else
-          tar czf ../../../release/hardware_monitor-${{ matrix.target }}.tar.gz hardware_monitor
-          sha256sum hardware_monitor > ../../../release/hardware_monitor-${{ matrix.target }}.sha256
+          tar czf ../../release/hardware_monitor-${{ matrix.target }}.tar.gz ${{ matrix.binary_name }}
+          sha256sum ${{ matrix.binary_name }} > ../../release/hardware_monitor-${{ matrix.target }}.sha256
         fi
-        cd ../../..
+        cd ../..
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4

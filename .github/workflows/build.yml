@@ -23,13 +23,13 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
+            artifact_suffix: linux
             binary_name: hardware_monitor
           - os: windows-latest
-            target: x86_64-pc-windows-msvc
+            artifact_suffix: windows
             binary_name: hardware_monitor.exe
           - os: macos-latest
-            target: x86_64-apple-darwin
+            artifact_suffix: macos
             binary_name: hardware_monitor
 
     steps:
@@ -38,7 +38,6 @@ jobs:
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
       with:
-        targets: ${{ matrix.target }}
         components: rustfmt, clippy
 
     - name: Install Linux dependencies
@@ -59,20 +58,20 @@ jobs:
         mkdir -p release
         cd target/release
         if [ "${{ matrix.os }}" = "windows-latest" ]; then
-          7z a ../../release/hardware_monitor-${{ matrix.target }}.zip ${{ matrix.binary_name }}
-          sha256sum ${{ matrix.binary_name }} > ../../release/hardware_monitor-${{ matrix.target }}.sha256
+          7z a ../../release/hardware_monitor-${{ matrix.artifact_suffix }}.zip ${{ matrix.binary_name }}
+          sha256sum ${{ matrix.binary_name }} > ../../release/hardware_monitor-${{ matrix.artifact_suffix }}.sha256
         else
-          tar czf ../../release/hardware_monitor-${{ matrix.target }}.tar.gz ${{ matrix.binary_name }}
-          sha256sum ${{ matrix.binary_name }} > ../../release/hardware_monitor-${{ matrix.target }}.sha256
+          tar czf ../../release/hardware_monitor-${{ matrix.artifact_suffix }}.tar.gz ${{ matrix.binary_name }}
+          sha256sum ${{ matrix.binary_name }} > ../../release/hardware_monitor-${{ matrix.artifact_suffix }}.sha256
         fi
         cd ../..
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: hardware_monitor-${{ matrix.target }}
+        name: hardware_monitor-${{ matrix.artifact_suffix }}
         path: |
-          release/hardware_monitor-${{ matrix.target }}.*
+          release/hardware_monitor-${{ matrix.artifact_suffix }}.*
         retention-days: 5
 
   release:
@@ -97,9 +96,9 @@ jobs:
             Hardware Monitor Release ${{ github.ref }}
             
             ## 下载
-            - [Windows x64](hardware_monitor-x86_64-pc-windows-msvc.zip)
-            - [Linux x64](hardware_monitor-x86_64-unknown-linux-gnu.tar.gz)
-            - [macOS x64](hardware_monitor-x86_64-apple-darwin.tar.gz)
+            - [Windows x64](hardware_monitor-windows.zip)
+            - [Linux x64](hardware_monitor-linux.tar.gz)
+            - [macOS x64](hardware_monitor-macos.tar.gz)
             
             SHA256 校验和文件包含在每个发布包中。
           draft: false

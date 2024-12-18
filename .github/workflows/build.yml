@@ -101,13 +101,11 @@ jobs:
           echo "SDKROOT=$(xcrun -sdk macosx --show-sdk-path)" >> $GITHUB_ENV
           echo "MACOSX_DEPLOYMENT_TARGET=11.0" >> $GITHUB_ENV
           echo "DEVELOPER_DIR=$(xcode-select -p)" >> $GITHUB_ENV
-          # 设置Rust工具链
-          echo "CARGO_BUILD_TARGET=aarch64-apple-darwin" >> $GITHUB_ENV
           # 设置链接器
           mkdir -p ~/.cargo
           echo '[target.aarch64-apple-darwin]' > ~/.cargo/config.toml
           echo 'linker = "clang"' >> ~/.cargo/config.toml
-          echo 'rustflags = ["-C", "link-arg=-fuse-ld=/usr/local/bin/zld"]' >> ~/.cargo/config.toml
+          echo 'rustflags = ["-C", "target-cpu=apple-m1"]' >> ~/.cargo/config.toml
         fi
 
     - name: Install macOS dependencies
@@ -142,10 +140,12 @@ jobs:
       run: |
         if [ "${{ runner.os }}" = "macOS" ]; then
           if [ "${{ matrix.target }}" = "aarch64-apple-darwin" ]; then
-            PATH="$(brew --prefix llvm)/bin:$PATH" \
-            CC="$(brew --prefix llvm)/bin/clang" \
-            CXX="$(brew --prefix llvm)/bin/clang++" \
-            cargo build --verbose --release
+            # 使用系统默认的clang
+            export CC=$(xcrun -f clang)
+            export CXX=$(xcrun -f clang++)
+            export SDKROOT=$(xcrun -sdk macosx --show-sdk-path)
+            export MACOSX_DEPLOYMENT_TARGET=11.0
+            cargo build --verbose --release --target ${{ matrix.target }}
           else
             cargo build --verbose --release --target ${{ matrix.target }}
           fi

@@ -101,11 +101,10 @@ jobs:
           echo "SDKROOT=$(xcrun -sdk macosx --show-sdk-path)" >> $GITHUB_ENV
           echo "MACOSX_DEPLOYMENT_TARGET=11.0" >> $GITHUB_ENV
           echo "DEVELOPER_DIR=$(xcode-select -p)" >> $GITHUB_ENV
-          # 设置链接器
+          # 设置cargo配置
           mkdir -p ~/.cargo
           echo '[target.aarch64-apple-darwin]' > ~/.cargo/config.toml
-          echo 'linker = "clang"' >> ~/.cargo/config.toml
-          echo 'rustflags = ["-C", "target-feature=+crt-static", "-C", "target-cpu=apple-m1"]' >> ~/.cargo/config.toml
+          echo 'rustflags = ["-C", "link-arg=-undefined", "-C", "link-arg=dynamic_lookup"]' >> ~/.cargo/config.toml
         fi
 
     - name: Install cross-compilation tools
@@ -135,11 +134,11 @@ jobs:
         if [ "${{ runner.os }}" = "macOS" ]; then
           if [ "${{ matrix.target }}" = "aarch64-apple-darwin" ]; then
             # 使用系统默认的clang
-            export CC=$(xcrun -f clang)
-            export CXX=$(xcrun -f clang++)
+            export PATH="/usr/bin:$PATH"
+            export CC=clang
+            export CXX=clang++
             export SDKROOT=$(xcrun -sdk macosx --show-sdk-path)
             export MACOSX_DEPLOYMENT_TARGET=11.0
-            export DEVELOPER_DIR=$(xcode-select -p)
             cargo build --verbose --release --target ${{ matrix.target }}
           else
             cargo build --verbose --release --target ${{ matrix.target }}

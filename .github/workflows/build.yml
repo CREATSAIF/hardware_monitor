@@ -67,6 +67,7 @@ jobs:
       with:
         targets: ${{ matrix.target }}
         components: rustfmt, clippy
+        toolchain: nightly
 
     - name: Cache dependencies
       uses: actions/cache@v3
@@ -92,6 +93,7 @@ jobs:
     - name: Setup macOS environment
       if: runner.os == 'macOS'
       run: |
+        rustup default stable
         rustup target add ${{ matrix.target }}
         if [ "${{ matrix.target }}" = "aarch64-apple-darwin" ]; then
           sudo xcode-select --install || true
@@ -104,7 +106,9 @@ jobs:
           # 设置cargo配置
           mkdir -p ~/.cargo
           echo '[target.aarch64-apple-darwin]' > ~/.cargo/config.toml
-          echo 'rustflags = ["-C", "link-arg=-undefined", "-C", "link-arg=dynamic_lookup"]' >> ~/.cargo/config.toml
+          echo 'linker = "clang"' >> ~/.cargo/config.toml
+          echo 'ar = "ar"' >> ~/.cargo/config.toml
+          echo 'rustflags = ["-C", "link-arg=-undefined", "-C", "link-arg=dynamic_lookup", "-C", "target-feature=+crt-static"]' >> ~/.cargo/config.toml
         fi
 
     - name: Install cross-compilation tools
@@ -137,9 +141,12 @@ jobs:
             export PATH="/usr/bin:$PATH"
             export CC=clang
             export CXX=clang++
+            export AR=ar
             export SDKROOT=$(xcrun -sdk macosx --show-sdk-path)
             export MACOSX_DEPLOYMENT_TARGET=11.0
-            cargo build --verbose --release --target ${{ matrix.target }}
+            cargo build --verbose --release --target ${{ matrix.target }} \
+              -Z build-std=panic_abort,std \
+              -Z build-std-features=panic_immediate_abort
           else
             cargo build --verbose --release --target ${{ matrix.target }}
           fi

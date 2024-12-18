@@ -49,16 +49,6 @@ jobs:
             artifact_suffix: windows-i686
             binary_name: hardware_monitor.exe
 
-          # macOS builds
-          - os: macos-latest
-            target: x86_64-apple-darwin
-            artifact_suffix: macos-x86_64
-            binary_name: hardware_monitor
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            artifact_suffix: macos-aarch64
-            binary_name: hardware_monitor
-
     steps:
     - uses: actions/checkout@v4
 
@@ -67,7 +57,6 @@ jobs:
       with:
         targets: ${{ matrix.target }}
         components: rustfmt, clippy
-        toolchain: nightly
 
     - name: Cache dependencies
       uses: actions/cache@v3
@@ -88,24 +77,6 @@ jobs:
       run: |
         rustup default stable
         rustup target add ${{ matrix.target }}
-
-    # macOS特定设置
-    - name: Setup macOS environment
-      if: runner.os == 'macOS'
-      run: |
-        rustup default nightly
-        rustup target add ${{ matrix.target }}
-        if [ "${{ matrix.target }}" = "aarch64-apple-darwin" ]; then
-          # 设置环境变量
-          echo "SDKROOT=$(xcrun -sdk macosx --show-sdk-path)" >> $GITHUB_ENV
-          echo "MACOSX_DEPLOYMENT_TARGET=11.0" >> $GITHUB_ENV
-          # 配置cargo
-          mkdir -p ~/.cargo
-          echo '[target.aarch64-apple-darwin]' > ~/.cargo/config.toml
-          echo 'linker = "clang"' >> ~/.cargo/config.toml
-          echo 'ar = "ar"' >> ~/.cargo/config.toml
-          echo 'rustflags = ["-C", "link-arg=-arch", "-C", "link-arg=arm64", "-C", "target-cpu=apple-a14"]' >> ~/.cargo/config.toml
-        fi
 
     - name: Install cross-compilation tools
       if: runner.os == 'Linux' && matrix.use_cross
@@ -130,22 +101,7 @@ jobs:
     - name: Build native
       if: matrix.use_cross != true
       shell: bash
-      run: |
-        if [ "${{ runner.os }}" = "macOS" ]; then
-          if [ "${{ matrix.target }}" = "aarch64-apple-darwin" ]; then
-            # 设置交叉编译环境
-            export SDKROOT=$(xcrun -sdk macosx --show-sdk-path)
-            export MACOSX_DEPLOYMENT_TARGET=11.0
-            export CC=$(xcrun -f clang)
-            export CXX=$(xcrun -f clang++)
-            export AR=$(xcrun -f ar)
-            cargo build --verbose --release --target ${{ matrix.target }}
-          else
-            cargo build --verbose --release --target ${{ matrix.target }}
-          fi
-        else
-          cargo build --verbose --release --target ${{ matrix.target }}
-        fi
+      run: cargo build --verbose --release --target ${{ matrix.target }}
 
     - name: Run tests
       if: matrix.use_cross != true && runner.os != 'Windows'
@@ -203,10 +159,6 @@ jobs:
             ### Windows
             - [Windows x64](hardware_monitor-windows-x86_64.zip)
             - [Windows x86](hardware_monitor-windows-i686.zip)
-            
-            ### macOS
-            - [macOS x64](hardware_monitor-macos-x86_64.tar.gz)
-            - [macOS ARM64](hardware_monitor-macos-aarch64.tar.gz)
             
             SHA256 校验和文件包含在每个发布包中。
           draft: false

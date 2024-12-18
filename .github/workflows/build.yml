@@ -105,14 +105,8 @@ jobs:
           mkdir -p ~/.cargo
           echo '[target.aarch64-apple-darwin]' > ~/.cargo/config.toml
           echo 'linker = "clang"' >> ~/.cargo/config.toml
-          echo 'rustflags = ["-C", "target-cpu=apple-m1"]' >> ~/.cargo/config.toml
+          echo 'rustflags = ["-C", "target-feature=+crt-static", "-C", "target-cpu=apple-m1"]' >> ~/.cargo/config.toml
         fi
-
-    - name: Install macOS dependencies
-      if: runner.os == 'macOS' && matrix.target == 'aarch64-apple-darwin'
-      run: |
-        brew install michaeleisel/zld/zld
-        brew install llvm
 
     - name: Install cross-compilation tools
       if: runner.os == 'Linux' && matrix.use_cross
@@ -145,6 +139,7 @@ jobs:
             export CXX=$(xcrun -f clang++)
             export SDKROOT=$(xcrun -sdk macosx --show-sdk-path)
             export MACOSX_DEPLOYMENT_TARGET=11.0
+            export DEVELOPER_DIR=$(xcode-select -p)
             cargo build --verbose --release --target ${{ matrix.target }}
           else
             cargo build --verbose --release --target ${{ matrix.target }}

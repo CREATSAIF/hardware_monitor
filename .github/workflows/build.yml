@@ -31,7 +31,7 @@ jobs:
             target: x86_64-apple-darwin
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Install Rust toolchain
       uses: actions-rs/toolchain@v1
@@ -68,11 +68,12 @@ jobs:
         cd ../../..
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: hardware_monitor-${{ matrix.target }}
         path: |
           release/hardware_monitor-${{ matrix.target }}.*
+        retention-days: 5
 
   release:
     needs: build
@@ -81,18 +82,17 @@ jobs:
     
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
 
       - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         with:
           tag_name: ${{ github.ref }}
-          release_name: Hardware Monitor ${{ github.ref }}
+          name: Hardware Monitor ${{ github.ref }}
           body: |
             Hardware Monitor Release ${{ github.ref }}
             
@@ -104,13 +104,7 @@ jobs:
             SHA256 校验和文件包含在每个发布包中。
           draft: false
           prerelease: false
-
-      - name: Upload Release Assets
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-        with:
           files: |
             artifacts/**/*.zip
             artifacts/**/*.tar.gz
-            artifacts/**/*.sha256 
+            artifacts/**/*.sha256

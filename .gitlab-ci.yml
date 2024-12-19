@@ -1,0 +1,145 @@
+image: rust:latest
+
+variables:
+  CARGO_HOME: $CI_PROJECT_DIR/.cargo
+  RUST_BACKTRACE: 1
+  CARGO_TERM_COLOR: always
+
+# 定义缓存策略
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - .cargo
+    - target/
+
+# 定义阶段
+stages:
+  - test
+  - build
+  - package
+  - release
+
+# 在运行任何作业之前的准备工作
+before_script:
+  - apt-get update -yq
+  - apt-get install -y pkg-config libudev-dev gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf zip
+  - rustup default stable
+  - rustup component add rustfmt clippy
+  - cargo install cross
+
+# 代码格式检查和 lint
+lint:
+  stage: test
+  script:
+    - cargo fmt -- --check
+    - cargo clippy -- -D warnings
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - if: $CI_COMMIT_BRANCH
+
+# 运行测试
+test:
+  stage: test
+  script:
+    - cargo test --verbose
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - if: $CI_COMMIT_BRANCH
+
+# Linux 构建
+build-linux:
+  stage: build
+  parallel:
+    matrix:
+      - TARGET: [x86_64-unknown-linux-gnu, aarch64-unknown-linux-gnu, armv7-unknown-linux-gnueabihf]
+  script:
+    - rustup target add $TARGET
+    - |
+      if [ "$TARGET" = "x86_64-unknown-linux-gnu" ]; then
+        cargo build --release --target $TARGET
+      else
+        cross build --release --target $TARGET
+      fi
+  artifacts:
+    paths:
+      - target/$TARGET/release/hardware_monitor
+    expire_in: 1 week
+
+# Windows 构建
+build-windows:
+  stage: build
+  parallel:
+    matrix:
+      - TARGET: [x86_64-pc-windows-msvc, i686-pc-windows-msvc]
+  script:
+    - rustup target add $TARGET
+    - cargo build --release --target $TARGET
+  artifacts:
+    paths:
+      - target/$TARGET/release/hardware_monitor.exe
+    expire_in: 1 week
+
+# 打包构建产物
+package:
+  stage: package
+  script:
+    - |
+      mkdir -p release
+      for target in target/*/release/hardware_monitor*; do
+        if [[ -f "$target" ]]; then
+          filename=$(basename "$target")
+          target_arch=$(echo "$target" | cut -d'/' -f2)
+          if [[ "$filename" == *.exe ]]; then
+            zip -j "release/hardware_monitor-${target_arch}.zip" "$target"
+            sha256sum "$target" > "release/hardware_monitor-${target_arch}.sha256"
+          else
+            tar czf "release/hardware_monitor-${target_arch}.tar.gz" -C "$(dirname "$target")" "$filename"
+            sha256sum "$target" > "release/hardware_monitor-${target_arch}.sha256"
+          fi
+        fi
+      done
+  artifacts:
+    paths:
+      - release/*
+    expire_in: 1 week
+  dependencies:
+    - build-linux
+    - build-windows
+
+# 发布版本
+release:
+  stage: release
+  script:
+    - |
+      if [[ $CI_COMMIT_TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        echo "Creating release for tag $CI_COMMIT_TAG"
+        # 这里可以使用 GitLab API 创建发布
+        curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file release/* "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/hardware_monitor/${CI_COMMIT_TAG#v}/"
+      fi
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+  dependencies:
+    - package
+
+# 部署到测试环境
+deploy_staging:
+  stage: .post
+  environment: staging
+  script:
+    - echo "Deploying to staging server"
+    # 这里添加部署脚本
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# 部署到生产环境
+deploy_production:
+  stage: .post
+  environment: production
+  script:
+    - echo "Deploying to production server"
+    # 这里添加部署脚本
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+  when: manual 
